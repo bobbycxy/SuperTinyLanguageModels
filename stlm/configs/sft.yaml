@@ -1,0 +1,60 @@
+# stlm/configs/sft.yaml
+
+
+model:
+  tokenizer:
+    type: "huggingface"   # or "huggingface"
+    model_name: "Qwen/Qwen3-0.6B"
+    vocab_size: 5000
+    save_path: "byte_bpe.json"
+
+  embedder:
+    # name: "huggingface"
+    # model_name: "Qwen/Qwen3-0.6B"
+    name: "standard"
+    max_position_embeddings: 1024
+    hidden_size: 512
+    dropout: 0.1
+  core:
+    # name: "huggingface"
+    # model_name: "Qwen/Qwen3-0.6B"
+    name: "standard"
+    num_layers: 12
+    attention:
+      name: "standard"
+      num_heads: 8
+      dropout: 0.1
+    ffn:
+      name: "standard"
+      intermediate_sate: 2048
+      activation: "gelu"
+  head:
+    name: "huggingface"
+    model_name: "Qwen/Qwen3-0.6B"
+
+lora:
+  enabled: true
+  target_modules: ["q_proj", "v_proj"] #, "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj" ]
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  exclude_modules: []
+
+trainer:
+  lr: 1e-4
+  grad_accum_steps: 4
+  epochs: 1
+  batch_size: 12
+  # log_interval: 8
+  eval_interval: 12
+  checkpointing: true
+  dataset:
+    path: "wikimedia/wikipedia"
+    name: "20231101.simple"
+    splits: ["train"]
+    text_column: "text"
+    val_split: 0.01
+
+general:
+  paths:
+    data_dir: "data"

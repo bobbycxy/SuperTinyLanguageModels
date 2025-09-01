@@ -13,6 +13,7 @@ from stlm.data.dataloader import get_dataloaders
 
 from tqdm import tqdm
 import wandb
+from stlm.utils import count_parameters
 
 def main():
     # ------------------ Init ------------------
@@ -34,6 +35,11 @@ def main():
     train_dataloader, val_dataloader = get_dataloaders(cfg, tokenizer=tokenizer)
 
     model = stlm.build_from_config(cfg)
+
+    total_params, trainable_params = count_parameters(model, verbose=True)
+    print(f"Total params (excluding ties): {total_params:,}")
+    print(f"Trainable params (excluding ties): {trainable_params:,}")
+
     model = stlm.LoRAWrapper(model, lora_cfg=cfg["lora"])
     model = stlm.FSDPWrapper(model, device=device)
 

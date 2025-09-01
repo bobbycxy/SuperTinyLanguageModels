@@ -17,8 +17,6 @@ for module_info in pkgutil.walk_packages([str(package_dir)], prefix="stlm."):
 
 def build_from_config(cfg: dict):
     """Build an STLM model (optionally with wrappers) from config."""
-    print(REGISTRY["core"])
-    print(cfg["model"]["core"]["name"])
     embedder_cls = REGISTRY["embedder"][cfg["model"]["embedder"]["name"]]
     core_cls     = REGISTRY["core"][cfg["model"]["core"]["name"]]
     head_cls     = REGISTRY["head"][cfg["model"]["head"]["name"]]
@@ -38,7 +36,8 @@ def build_from_config(cfg: dict):
         checkpointing=checkpointing
     )
     head = head_cls(
-        model_cfg=cfg["model"]["head"],
+        model_cfg=cfg["model"],
+        embedder=embedder if cfg["model"]["head"].get("tie_weights", False) else None
     )
 
     model = STLM(embedder, core, head)

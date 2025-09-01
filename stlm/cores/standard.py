@@ -8,7 +8,8 @@ from .components import TransformerBlock
 @register_component("core", "standard")
 class StandardCore(BaseCore):
     def __init__(self, model_cfg, checkpointing=False):
-        hidden_size = model_cfg["tokenizer"]["hidden_size"]
+        super().__init__()
+        hidden_size = model_cfg["embedder"]["hidden_size"]
         num_layers = model_cfg["core"]["num_layers"]
 
         self.layers = nn.ModuleList([
@@ -19,5 +20,5 @@ class StandardCore(BaseCore):
                                        
     def forward(self, x, attn_mask=None):
         for layer in self.layers:
-            x = self.layers(x)
+            x = layer(x, attn_mask)
         return self.layer_norm(x)

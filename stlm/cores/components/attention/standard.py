@@ -1,3 +1,5 @@
+# stlm/cores/components/attention/standard.py
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,10 +10,10 @@ class StandardAttention(nn.Module):
     def __init__(self, model_cfg):
         super().__init__()
         self.hidden_size = model_cfg["embedder"]["hidden_size"]
-        self.num_heads = model_cfg["core"]["num_heads"]
+        self.num_heads = model_cfg["core"]["attention"]["num_heads"]
         assert self.hidden_size % self.num_heads == 0, "hidden size must be divisible by num_heads"
         
-        self.dropout = model_cfg["core"]["dropout"]
+        self.dropout = model_cfg["core"]["attention"]["dropout"]
         self.head_dim = self.hidden_size // self.num_heads
         self.scale = self.head_dim ** -0.5
 
@@ -33,6 +35,7 @@ class StandardAttention(nn.Module):
         attention_scores = torch.matmul(q, k.transpose(-2,-1)) * self.scale
 
         if attn_mask is not None:
+            attn_mask = attn_mask.contiguous().view(B, 1, 1, T)
             attention_scores = attention_scores.masked_fill(attn_mask==0, float("-inf"))
 
         attention_probs = F.softmax(attention_scores, dim=-1)

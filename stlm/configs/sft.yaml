@@ -3,8 +3,9 @@
 
 model:
   tokenizer:
-    type: "huggingface"   # or "huggingface"
-    model_name: "Qwen/Qwen3-0.6B"
+    # type: "huggingface"
+    # model_name: "Qwen/Qwen3-0.6B"
+    type: "bytebpe"
     vocab_size: 5000
     save_path: "byte_bpe.json"
 
@@ -26,11 +27,15 @@ model:
       dropout: 0.1
     ffn:
       name: "standard"
-      intermediate_sate: 2048
+      intermediate_size: 2048
       activation: "gelu"
+      dropout: 0.1
   head:
-    name: "huggingface"
-    model_name: "Qwen/Qwen3-0.6B"
+    # name: "huggingface"
+    # model_name: "Qwen/Qwen3-0.6B"
+    name: "standard"
+    tie_weights: true
+    
 
 lora:
   enabled: true

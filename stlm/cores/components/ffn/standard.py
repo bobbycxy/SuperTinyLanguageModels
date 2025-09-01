@@ -1,4 +1,5 @@
-import torch
+# stlm/cores/components/ffn/standard.py
+
 import torch.nn as nn
 import torch.nn.functional as F
 from stlm import register_component

@@ -76,7 +76,7 @@ class SFTTrainer(BaseTrainer):
             self.processed_tokens += int(total_tokens)
 
             # log only on rank 0
-            if not dist.is_initialized() or dist.get_rank() == 0:
+            if (not dist.is_initialized() or dist.get_rank() == 0) and wandb.run is not None:
                 wandb.log({
                     "train/loss": avg_loss,
                     "train/processed_tokens": self.processed_tokens,

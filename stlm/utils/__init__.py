@@ -7,7 +7,7 @@ __all__ = [
     "get_transformer_layer_classes"
 ]
 
-def count_parameters(model, verbose=False):
+def count_parameters(model):
     """Count total and trainable parameters, excluding tied weights."""
     total, trainable = 0, 0
 

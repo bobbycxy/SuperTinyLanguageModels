@@ -186,3 +186,7 @@ huggingface-cache
 .vs/
 
 sandbox.py
+
+wandb
+output
+data

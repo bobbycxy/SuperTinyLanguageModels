@@ -6,6 +6,7 @@ from collections import Counter
 from datasets import load_dataset
 from stlm.core import BaseTokenizer
 import torch.distributed as dist
+from stlm.utils.data_utils import get_file_path
 
 class ByteBPETokenizer(BaseTokenizer):
     def __init__(self, vocab_size=5000, min_freq=2):
@@ -123,7 +124,9 @@ class ByteBPETokenizer(BaseTokenizer):
     def from_config(cls, cfg):
         tok_cfg = cfg["model"]["tokenizer"]
         ds_cfg = cfg["trainer"]["dataset"]
-        save_path = tok_cfg.get("save_path", "byte_bpe.json")
+        out_dir = get_file_path(cfg)
+        os.makedirs(out_dir, exist_ok=True)
+        save_path = os.path.join(out_dir, tok_cfg.get("save_path", "byte_bpe.json"))
 
         if os.path.exists(save_path):
             print(f"✅ Loading ByteBPE tokenizer from {save_path}")

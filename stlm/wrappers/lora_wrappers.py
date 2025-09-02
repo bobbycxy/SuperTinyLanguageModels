@@ -13,7 +13,7 @@ class LoRAWrapper(nn.Module):
             exclude_modules=lora_cfg.get("exclude_modules")
         )
         lora_params, total_params, pct = count_lora_parameters(self.model)
-        # print(f"[LoRAWrapper] Params: {lora_params:,} / {total_params:,} ({pct:.2f}%)")
+        print(f"[LoRAWrapper] Params: {lora_params:,} / {total_params:,} ({pct:.2f}%)")
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)

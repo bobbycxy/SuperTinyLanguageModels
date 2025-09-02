@@ -49,9 +49,9 @@ trainer:
   lr: 1e-4
   grad_accum_steps: 4
   epochs: 1
-  batch_size: 12
+  batch_size: 32
   # log_interval: 8
-  eval_interval: 12
+  eval_interval: 40
   checkpointing: true
   dataset:
     path: "wikimedia/wikipedia"
@@ -63,3 +63,6 @@ trainer:
 general:
   paths:
     data_dir: "data"
+  wandb:
+    wandb_log: true
+    project_name: supertinylanguagemodels

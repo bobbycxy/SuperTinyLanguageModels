@@ -7,6 +7,7 @@ from .registry import REGISTRY, register_component
 from .tokenizers import build_tokenizer
 from .wrappers import DDPWrapper, FSDPWrapper, LoRAWrapper
 from .trainers.sft_trainer import SFTTrainer
+from .utils import count_parameters
 
 # --- Auto-import all submodules so @register_component decorators run ---
 package_dir = pathlib.Path(__file__).resolve().parent
@@ -41,6 +42,12 @@ def build_from_config(cfg: dict):
     )
 
     model = STLM(embedder, core, head)
+    
+    # print the size of the model
+    total_params, trainable_params = count_parameters(model)
+    print(f"Total params (excluding ties): {total_params:,}")
+    print(f"Trainable params (excluding ties): {trainable_params:,}")
+    
     return model
 
 

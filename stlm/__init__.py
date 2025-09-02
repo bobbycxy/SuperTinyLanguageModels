@@ -9,10 +9,8 @@ from .wrappers import DDPWrapper, FSDPWrapper, LoRAWrapper
 from .trainers.sft_trainer import SFTTrainer
 from .utils import count_parameters
 
-# --- Auto-import all submodules so @register_component decorators run ---
 package_dir = pathlib.Path(__file__).resolve().parent
 for module_info in pkgutil.walk_packages([str(package_dir)], prefix="stlm."):
-    # Skip __init__.py itself to avoid recursion
     if module_info.name != __name__:
         importlib.import_module(module_info.name)
 

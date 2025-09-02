@@ -13,6 +13,8 @@ Please note that this repository is an evolving work in progress, reflecting the
 - add generate text abilities
 - add checkpointing and loading methods in STLM object
 - add pytests (enforcing the shape of the components at input and output?)
+- add RL trainer object
+- some ideas: hierarchical tokenizer, [HRM](https://arxiv.org/pdf/2506.21734), [TTT](https://arxiv.org/pdf/2407.04620), batch_size scheduling
 - write over the various components, e.g. FFN, Attn
 - improve the train.py. Now is too long. It should be as simple as 
 ```python

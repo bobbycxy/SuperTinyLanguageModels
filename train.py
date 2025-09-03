@@ -35,7 +35,7 @@ def main():
     train_dataloader, val_dataloader = get_dataloaders(cfg, tokenizer=tokenizer)
 
     model = stlm.build_from_config(cfg)
-    model = stlm.LoRAWrapper(model, lora_cfg=cfg["lora"])
+    # model = stlm.LoRAWrapper(model, lora_cfg=cfg["lora"])
     model = stlm.FSDPWrapper(model, device=device)
 
     optimizer = optim.AdamW(
@@ -46,39 +46,21 @@ def main():
     trainer = SFTTrainer(
         model,
         optimizer,
+        train_dataloader=train_dataloader,
+        val_dataloader=val_dataloader,
         scheduler=None,
         device=device,
         grad_accum_steps=cfg["trainer"].get("grad_accum_steps", 1)
     )
 
-    for epoch in range(cfg["trainer"].get("epochs", 1)):
-        accum_count = 0
-        if hasattr(train_dataloader.sampler, "set_epoch"):
-            train_dataloader.sampler.set_epoch(epoch)
+    trainer.eval_step(step=0)
 
-        for step, batch in enumerate(train_dataloader):
-            metrics = trainer.train_step(batch)
-            accum_count += 1
-
-            if accum_count % trainer.grad_accum_steps == 0:
-                trainer.optimizer_step(step=step, epoch=epoch)
-
-            if accum_count % cfg["trainer"]["eval_interval"] == 0:
-                val_losses = []
-                for batch in val_dataloader:   # every rank runs this
-                    val_loss = trainer.eval_step(batch)
-                    val_losses.append(val_loss)
-
-                # mean across batches
-                mean_val_loss = sum(val_losses) / len(val_losses)
-
-                # only rank 0 logs
-                if (not dist.is_initialized() or dist.get_rank() == 0) and wandb.run is not None:
-                    wandb.log({"val/loss": mean_val_loss}, step=trainer.processed_tokens)
-                    print(f"[VAL] epoch={epoch} loss={mean_val_loss:.4f}")
-
-        if accum_count % trainer.grad_accum_steps != 0:
-            trainer.optimizer_step()
+    for step in range(cfg["trainer"]["max_iterations"]):
+        
+        trainer.train_step(step)
+        
+        if step % cfg["trainer"]["eval_interval"] == 0:
+            trainer.eval_step(step)
 
     if is_dist():
         dist.destroy_process_group()

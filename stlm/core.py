@@ -62,9 +62,11 @@ class STLM(nn.Module):
 
 
 class BaseTrainer(ABC):
-    def __init__(self, model, optimizer, scheduler=None, device="cuda", grad_accum_steps=1, use_mixed_precision=True):
+    def __init__(self, model, optimizer, train_dataloader, val_dataloader, scheduler=None, device="cuda", grad_accum_steps=1, use_mixed_precision=True):
         self.model = model
         self.optimizer = optimizer
+        self.train_dataloader = train_dataloader
+        self.val_dataloader = val_dataloader
         self.scheduler = scheduler
         self.device = device
         self.grad_accum_steps = grad_accum_steps

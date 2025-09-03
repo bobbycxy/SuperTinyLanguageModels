@@ -37,20 +37,20 @@ model:
     tie_weights: true
     
 
-lora:
-  enabled: true
-  target_modules: ["q_proj", "v_proj"] #, "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj" ]
-  rank: 8
-  alpha: 16
-  dropout: 0.05
-  exclude_modules: []
+# lora:
+#   target_modules: ["q_proj", "v_proj"] #, "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj" ]
+#   rank: 8
+#   alpha: 16
+#   dropout: 0.05
+#   exclude_modules: []
 
 trainer:
+  max_iterations: 1000
   lr: 1e-4
   grad_accum_steps: 4
   epochs: 1
   batch_size: 32
-  # log_interval: 8
+  save_interval: None
   eval_interval: 40
   checkpointing: true
   dataset:

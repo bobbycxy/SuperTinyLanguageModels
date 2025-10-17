@@ -46,6 +46,8 @@ class LossOutput:
         d.update(self.metrics)
         return d
 
+
+
 class BaseTokenizer(ABC):
     pad_token_id: int
     eos_token_id: int
@@ -86,6 +88,8 @@ class BaseHead(nn.Module, ABC):
     def forward(self, x):
         pass
 
+
+
 class STLM(nn.Module):
     """Super Tiny Language Model architecture."""
     def __init__(self, embedder: nn.Module, core: nn.Module, head: nn.Module, tokenizer):
@@ -122,6 +126,8 @@ class STLM(nn.Module):
                 break
 
         return self.tokenizer.decode(input_ids[0].tolist())
+
+
 
 class BaseTrainer(ABC):
     def __init__(

@@ -40,17 +40,16 @@ def main():
     # load build the model
     model = stlm.build_from_config(cfg)
 
-    # optionally apply LoRA
-    # model = stlm.LoRAWrapper(model, lora_cfg=cfg["lora"])
-
     # Distributed wrapper
     model = stlm.DDPWrapper(model, device_id=device_id)
 
+    # Optimizer
     optimizer = optim.AdamW(
         [p for p in model.parameters() if p.requires_grad], 
         lr=float(cfg["trainer"].get("lr", 1e-3))
     )
 
+    # Trainer
     trainer = CausalTrainer(
         model,
         optimizer,
@@ -61,23 +60,14 @@ def main():
         grad_accum_steps=cfg["trainer"].get("grad_accum_steps", 1)
     )
 
-     # ------------------ 🔍 Inspect first batch per GPU ------------------
-    if dist.is_initialized():
-        # fetch one batch from dataloader
-        first_batch = next(iter(train_dataloader))
-        input_ids = first_batch["input_ids"]
-        print(f"[Rank {rank}] First batch input_ids (first 10 tokens): {input_ids[0][:10].tolist()}")
-        dist.barrier()  # sync all ranks before continuing
-
+    # Training Loop
     trainer.eval_step(step=0, prompt="Once upon a time", max_new_tokens=50)
-
     for step in range(cfg["trainer"]["max_iterations"]):
-        
         trainer.train_step(step)
-        
         if step % cfg["trainer"]["eval_interval"] == 0 and step != 0:
             trainer.eval_step(step, prompt="Once upon a time", max_new_tokens=50)
-
+    
+    # Cleanup
     if is_dist():
         dist.destroy_process_group()
 

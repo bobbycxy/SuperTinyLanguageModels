@@ -323,3 +323,70 @@ class BaseTrainer(ABC):
                 f"[EVAL] step {eval_state.step} | loss {eval_state.loss:.4f} | "
                 f"ppl {eval_state.perplexity:.2f} | generated_text: {truncated_text}"
             )
+    
+    def save_checkpoint(self, step: int, filename: str = None):
+        """Save model, optimizer, and trainer state (safe for DDP/FSDP)."""
+        if dist.is_initialized() and dist.get_rank() != 0:
+            return  # only rank 0 saves
+
+        ckpt_dir = self.out_dir or "./checkpoints"
+        os.makedirs(ckpt_dir, exist_ok=True)
+        ckpt_path = filename or os.path.join(ckpt_dir, f"checkpoint_step_{step}.pt")
+
+        # Unwrap model for saving
+        model_to_save = self.model
+        if hasattr(model_to_save, "module"):  # DDP
+            model_to_save = model_to_save.module
+        elif hasattr(model_to_save, "model"):  # DDPWrapper or FSDPWrapper
+            model_to_save = model_to_save.model
+            if hasattr(model_to_save, "module"):
+                model_to_save = model_to_save.module
+
+        # Handle FSDP unwrapping safely
+        if isinstance(self.model, torch.distributed.fsdp.FullyShardedDataParallel):
+            from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+            with FSDP.state_dict_type(self.model, state_dict_type="full_state_dict"):
+                state_dict = self.model.state_dict()
+        else:
+            state_dict = model_to_save.state_dict()
+
+        # Package everything to save
+        save_obj = {
+            "model_state_dict": state_dict,
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "trainer_state": asdict(self.state),
+        }
+        torch.save(save_obj, ckpt_path)
+        log.info(f"Saved checkpoint to {ckpt_path}")
+
+    def load_checkpoint(self, ckpt_path: str, strict: bool = True):
+        """Load model, optimizer, and trainer state (works pre- or post-wrap)."""
+        if not os.path.exists(ckpt_path):
+            log.warning(f"Checkpoint not found: {ckpt_path}")
+            return False
+
+        map_location = "cpu" if not torch.cuda.is_available() else "cuda"
+        checkpoint = torch.load(ckpt_path, map_location=map_location)
+
+        # Unwrap model if wrapped
+        model_to_load = self.model
+        if hasattr(model_to_load, "module"):
+            model_to_load = model_to_load.module
+        elif hasattr(model_to_load, "model"):
+            model_to_load = model_to_load.model
+            if hasattr(model_to_load, "module"):
+                model_to_load = model_to_load.module
+
+        missing, unexpected = model_to_load.load_state_dict(
+            checkpoint["model_state_dict"], strict=strict
+        )
+        log.info(f"Loaded model weights from {ckpt_path}")
+        if missing or unexpected:
+            log.warning(f"Missing keys: {missing}, Unexpected keys: {unexpected}")
+
+        if "optimizer_state_dict" in checkpoint:
+            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        if "trainer_state" in checkpoint:
+            self.state = TrainerState(**checkpoint["trainer_state"])
+
+        return True

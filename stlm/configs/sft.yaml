@@ -50,7 +50,7 @@ trainer:
   grad_accum_steps: 4
   epochs: 1
   batch_size: 64
-  save_interval: None
+  save_interval: 1000
   eval_interval: 500
   checkpointing: true
   dataset:
@@ -61,6 +61,7 @@ trainer:
     val_split: 0.01
 
 general:
+  load_checkpoint: None
   paths:
     data_dir: ${hydra:runtime.cwd}/data          # always points to your project root data/
     outputs_dir: ${hydra:runtime.output_dir}     # dynamically resolves to this run’s output folder

@@ -12,7 +12,8 @@ from stlm.utils.dist_utils import init_distributed_setup, is_dist
 from stlm.trainers.causaltrainer import CausalTrainer
 from stlm.tokenizers import build_tokenizer
 from stlm.dataloader.dataloader import get_dataloaders, prepare_data
-
+import logging
+log = logging.getLogger(__name__)
 
 @hydra.main(config_path="stlm/configs", config_name="sft")
 def main(cfg: DictConfig):
@@ -37,6 +38,16 @@ def main(cfg: DictConfig):
     val_dataloader = get_dataloaders(cfg, split="validation")
 
     model = stlm.build_from_config(cfg)
+
+    # --- Load checkpoint before wrapping ---
+    ckpt_path = cfg.general.get("load_checkpoint", None)
+    if ckpt_path and os.path.exists(ckpt_path):
+        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+        log.info(f"Preloaded checkpoint from {ckpt_path}")
+    else:
+        log.info(f"No checkpoint found at {ckpt_path}, training from scratch.")
+
     model = stlm.DDPWrapper(model, device_id=device_id)
 
     optimizer = optim.AdamW(
@@ -67,6 +78,8 @@ def main(cfg: DictConfig):
         trainer.train_step(step)
         if step % cfg.trainer.get("eval_interval", 100) == 0:
             trainer.eval_step(step, prompt=cfg.general.get("eval_prompt", "Once upon a time"), max_new_tokens=50)
+        if step % cfg.trainer.get("save_interval", 1000) == 0:
+            trainer.save_checkpoint(step)
 
     if is_dist():
         dist.destroy_process_group()

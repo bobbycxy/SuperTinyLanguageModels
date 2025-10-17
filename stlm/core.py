@@ -102,6 +102,38 @@ class STLM(nn.Module):
         self.head = head
         self.tokenizer = tokenizer
 
+    @classmethod
+    def from_config(cls, cfg: dict):
+        from stlm.tokenizers import build_tokenizer
+        model_cfg = cfg["model"]
+        checkpointing = cfg.get("trainer", {}).get("checkpointing", False)
+
+        # Ensure all components exist in registry
+        try:
+            embedder_cls = REGISTRY["embedder"][model_cfg["embedder"]["name"]]
+            core_cls     = REGISTRY["core"][model_cfg["core"]["name"]]
+            head_cls     = REGISTRY["head"][model_cfg["head"]["name"]]
+        except KeyError as e:
+            raise KeyError(f"[build_from_config] Missing component in REGISTRY: {e}")
+
+        # Tokenizer
+        tokenizer = build_tokenizer(cfg)
+
+        # Instantiate submodules
+        embedder = embedder_cls(model_cfg=model_cfg, checkpointing=checkpointing, pad_token_id=tokenizer.pad_token_id)
+        core = core_cls(model_cfg=model_cfg, checkpointing=checkpointing)
+        head = head_cls(model_cfg=model_cfg, embedder=embedder if model_cfg["head"].get("tie_weights", False) else None)
+
+        # Combine into the full model
+        model = STLM(embedder, core, head, tokenizer)
+
+        # Print parameter summary
+        from stlm.utils import count_parameters
+        total_params, trainable_params = count_parameters(model)
+        print(f"[Model] Total params: {total_params:,} | Trainable: {trainable_params:,}")
+
+        return model
+
     def forward(self, token_ids, attn_mask=None):
         x = self.embedder(token_ids)
         x = self.core(x, attn_mask)

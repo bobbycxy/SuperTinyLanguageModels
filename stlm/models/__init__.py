@@ -1,14 +1,5 @@
 #stlm/models/__init__.py
-
-import importlib
-import pkgutil
-import pathlib
-
-from stlm.registry import REGISTRY
-from stlm.core import STLM
-from stlm.tokenizers import build_tokenizer
-from stlm.utils import count_parameters
-
+import importlib, pkgutil, pathlib
 
 def _import_all_model_submodules():
     """
@@ -39,49 +30,9 @@ def _import_all_model_submodules():
                 imported.append(module_info.name)
             except Exception as e:
                 print(f"[WARN] Skipping module {module_info.name}: {e}")
-
-    print(f"[stlm.models] Imported {len(imported)} model submodules.")
+    
     return imported
 
 
 # Automatically run this once on import
 _import_all_model_submodules()
-
-def build_from_config(cfg: dict):
-    model_cfg = cfg["model"]
-    checkpointing = cfg.get("trainer", {}).get("checkpointing", False)
-
-    # Ensure all components exist in registry
-    try:
-        embedder_cls = REGISTRY["embedder"][model_cfg["embedder"]["name"]]
-        core_cls     = REGISTRY["core"][model_cfg["core"]["name"]]
-        head_cls     = REGISTRY["head"][model_cfg["head"]["name"]]
-    except KeyError as e:
-        raise KeyError(f"[build_from_config] Missing component in REGISTRY: {e}")
-
-    # Tokenizer
-    tokenizer = build_tokenizer(cfg)
-
-    # Instantiate submodules
-    embedder = embedder_cls(
-        model_cfg=model_cfg,
-        checkpointing=checkpointing,
-        pad_token_id=tokenizer.pad_token_id,
-    )
-    core = core_cls(
-        model_cfg=model_cfg,
-        checkpointing=checkpointing,
-    )
-    head = head_cls(
-        model_cfg=model_cfg,
-        embedder=embedder if model_cfg["head"].get("tie_weights", False) else None,
-    )
-
-    # Combine into the full model
-    model = STLM(embedder, core, head, tokenizer)
-
-    # Print parameter summary
-    total_params, trainable_params = count_parameters(model)
-    print(f"[Model] Total params: {total_params:,} | Trainable: {trainable_params:,}")
-
-    return model

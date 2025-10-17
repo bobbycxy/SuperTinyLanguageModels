@@ -37,7 +37,7 @@ def main(cfg: DictConfig):
     train_dataloader = get_dataloaders(cfg, split="train")
     val_dataloader = get_dataloaders(cfg, split="validation")
 
-    model = stlm.build_from_config(cfg)
+    model = stlm.STLM.from_config(cfg)
 
     # --- Load checkpoint before wrapping ---
     ckpt_path = cfg.general.get("load_checkpoint", None)

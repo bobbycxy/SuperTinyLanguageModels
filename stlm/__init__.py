@@ -1,6 +1,6 @@
 # stlm/__init__.py
 from .core import STLM, BaseTokenizer, BaseEmbedder, BaseCore, BaseHead, BaseTrainer
-from .models import build_from_config
+from . import models
 from .wrappers import DDPWrapper
 from .wrappers import LoRAWrapper
 from .trainers.causaltrainer import CausalTrainer
@@ -16,5 +16,4 @@ __all__ = [
     "CausalTrainer",
     "DDPWrapper",
     "LoRAWrapper",
-    "build_from_config",
 ]

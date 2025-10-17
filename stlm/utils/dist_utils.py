@@ -55,9 +55,11 @@ def init_distributed_setup():
         timeout=datetime.timedelta(seconds=3600),
     )
 
-    torch.cuda.set_device(local_rank)
-    print(f"[Rank {rank}] Distributed setup complete "
-          f"(local_rank={local_rank}, world_size={world_size})")
+    if torch.cuda.is_available():
+        torch.cuda.set_device(local_rank)
+
+    if rank == 0:
+        print(f"Distributed setup complete (world_size={world_size})")
 
     return rank, world_size, local_rank
 

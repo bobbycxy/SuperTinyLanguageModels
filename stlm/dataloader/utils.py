@@ -3,7 +3,7 @@ from datasets import load_dataset, load_from_disk
 import os
 from datasets import DatasetDict
 
-def prepare_tokenized_dataset(cfg, tokenizer):
+def archive_prepare_tokenized_dataset(cfg, tokenizer):
     out_dir = os.path.join(get_file_path(cfg), "tokenized")
     if os.path.exists(out_dir):
         print(f"✅ Tokenized dataset already at {out_dir}")

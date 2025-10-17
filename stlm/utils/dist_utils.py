@@ -17,36 +17,50 @@ def get_transformer_layer_classes(model):
 
     for module in core_model.modules():
         cls = type(module)
-        if cls.__name__.lower().endswith("decoderlayer") \
-           or cls.__name__.lower().endswith("encoderlayer") \
-           or cls.__name__.lower().endswith("block") \
-           or cls.__name__.lower().endswith("layer"):
+        if cls.__name__.lower().endswith(("decoderlayer", "encoderlayer", "block", "layer")):
             layer_classes.add(cls)
 
     return layer_classes
 
-def init_distributed_setup():
-    """Initialize distributed environment (for torchrun)."""
-    if dist.is_initialized():
-        return  # already done
 
+def init_distributed_setup():
+    """
+    Initialize torch.distributed for torchrun-style multi-GPU jobs.
+
+    Returns:
+        rank (int): global process rank
+        world_size (int): total number of processes
+        local_rank (int): process-local GPU index (device_id)
+    """
+    if dist.is_initialized():
+        rank = dist.get_rank()
+        world_size = dist.get_world_size()
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        return rank, world_size, local_rank
+
+    # read environment vars set by torchrun
     rank = int(os.environ.get("RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
 
-    os.environ["MASTER_ADDR"] = os.environ.get("MASTER_ADDR", "localhost")
-    os.environ["MASTER_PORT"] = os.environ.get("MASTER_PORT", "29500")
+    # default master addr/port
+    os.environ.setdefault("MASTER_ADDR", "localhost")
+    os.environ.setdefault("MASTER_PORT", "29500")
 
+    # initialize process group
     dist.init_process_group(
         backend="nccl",
         rank=rank,
         world_size=world_size,
-        timeout=datetime.timedelta(seconds=3600)
+        timeout=datetime.timedelta(seconds=3600),
     )
 
     torch.cuda.set_device(local_rank)
     print(f"[Rank {rank}] Distributed setup complete "
           f"(local_rank={local_rank}, world_size={world_size})")
+
+    return rank, world_size, local_rank
+
 
 def is_dist():
     """Check if distributed process group is initialized."""

@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from stlm import REGISTRY
+from stlm.registry import REGISTRY
 import pkgutil, importlib, pathlib
 
 package_dir = pathlib.Path(__file__).resolve().parent

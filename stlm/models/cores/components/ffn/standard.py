@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-from stlm import register_component
+from stlm.registry import register_component
 
 @register_component("ffn", "standard")
 class StandardFFN(nn.Module):

@@ -1,7 +1,8 @@
 # stlm/heads/standard.py
 
 import torch.nn as nn
-from stlm import BaseHead, register_component
+from stlm import BaseHead
+from stlm.registry import register_component
 
 @register_component("head", "standard")
 class StandardLMHead(BaseHead):

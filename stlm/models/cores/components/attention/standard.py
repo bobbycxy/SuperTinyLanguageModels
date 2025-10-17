@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from stlm import register_component
+from stlm.registry import register_component
 
 @register_component("attention", "standard")
 class StandardAttention(nn.Module):

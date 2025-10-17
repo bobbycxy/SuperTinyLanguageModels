@@ -1,66 +1,20 @@
-import pkgutil
-import importlib
-import pathlib
-
-from .core import STLM, BaseEmbedder, BaseCore, BaseHead, BaseTrainer, BaseTokenizer
-from .registry import REGISTRY, register_component
-from .tokenizers import build_tokenizer
-from .wrappers import DDPWrapper, FSDPWrapper, LoRAWrapper
-from .trainers.sft_trainer import SFTTrainer
-from .utils import count_parameters
-
-package_dir = pathlib.Path(__file__).resolve().parent
-for module_info in pkgutil.walk_packages([str(package_dir)], prefix="stlm."):
-    if module_info.name != __name__:
-        importlib.import_module(module_info.name)
-
-def build_from_config(cfg: dict):
-    """Build an STLM model (optionally with wrappers) from config."""
-    embedder_cls = REGISTRY["embedder"][cfg["model"]["embedder"]["name"]]
-    core_cls     = REGISTRY["core"][cfg["model"]["core"]["name"]]
-    head_cls     = REGISTRY["head"][cfg["model"]["head"]["name"]]
-
-    # Global toggle
-    checkpointing = cfg.get("trainer", {}).get("checkpointing", False)
-    tokenizer = build_tokenizer(cfg)
-
-    # Build components
-    embedder = embedder_cls(
-        model_cfg=cfg["model"],
-        checkpointing=checkpointing,
-        pad_token_id=tokenizer.pad_token_id
-    )
-    core = core_cls(
-        model_cfg=cfg["model"],
-        checkpointing=checkpointing
-    )
-    head = head_cls(
-        model_cfg=cfg["model"],
-        embedder=embedder if cfg["model"]["head"].get("tie_weights", False) else None
-    )
-
-    model = STLM(embedder, core, head)
-    
-    # print the size of the model
-    total_params, trainable_params = count_parameters(model)
-    print(f"Total params (excluding ties): {total_params:,}")
-    print(f"Trainable params (excluding ties): {trainable_params:,}")
-    
-    return model
+# stlm/__init__.py
+from .core import STLM, BaseTokenizer, BaseEmbedder, BaseCore, BaseHead, BaseTrainer
+from .models import build_from_config
+from .wrappers import DDPWrapper
+from .wrappers import LoRAWrapper
+from .trainers.causaltrainer import CausalTrainer
 
 
 __all__ = [
+    "STLM",
     "BaseTokenizer",
     "BaseEmbedder",
     "BaseCore",
     "BaseHead",
-    "STLM",
     "BaseTrainer",
-    "SFTTrainer",
-    "REGISTRY",
-    "register_component",
-    "build_from_config",
+    "CausalTrainer",
     "DDPWrapper",
-    "FSDPWrapper",
     "LoRAWrapper",
+    "build_from_config",
 ]

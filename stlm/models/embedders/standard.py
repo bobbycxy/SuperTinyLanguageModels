@@ -15,6 +15,7 @@ class StandardEmbedder(BaseEmbedder):
         
         self.hidden_size = model_cfg["embedder"]["hidden_size"]
         self.checkpointing = checkpointing
+        self.max_position_embeddings = max_position_embeddings
         self.token_embedding = nn.Embedding(
             num_embeddings=vocab_size,
             embedding_dim=self.hidden_size,

@@ -13,6 +13,9 @@ import math
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 import wandb
 
+import logging
+log = logging.getLogger(__name__)
+
 @dataclass
 class TrainerState:
     step: int = 0
@@ -139,16 +142,19 @@ class BaseTrainer(ABC):
         scheduler=None,
         device: str = "cuda",
         grad_accum_steps: int = 1,
-        use_mixed_precision: bool = True
+        use_mixed_precision: bool = True,
+        out_dir: str = None,
     ):
         self.model = model.to(device)
         self.optimizer = optimizer
         self.train_dataloader = train_dataloader
+        self.train_sampler = getattr(train_dataloader, "sampler", None)
         self.val_dataloader = val_dataloader
         self.scheduler = scheduler
         self.device = device
         self.grad_accum_steps = grad_accum_steps
         self.state = TrainerState()
+        self.out_dir = out_dir
 
         if use_mixed_precision and torch.cuda.is_available():
             dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -177,7 +183,8 @@ class BaseTrainer(ABC):
             return next(self._train_iter)
         except StopIteration:
             self.state.epoch += 1
-            self.train_dataloader.sampler.set_epoch(self.state.epoch)
+            if self.train_sampler is not None and hasattr(self.train_sampler, "set_epoch"):
+                self.train_sampler.set_epoch(self.state.epoch)
             self._train_iter = iter(self.train_dataloader)
             return next(self._train_iter)
     
@@ -286,33 +293,33 @@ class BaseTrainer(ABC):
                     self.state.to_log_dict(prefix="train"),
                     step=self.state.tokens
                 )
-            print(
-                f"[TRAIN] step {self.state.step} | tokens {self.state.tokens} | epoch {self.state.epoch} | loss {self.state.loss:.4f} | ppl {self.state.perplexity:.2f}"
+            log.info(
+                f"[TRAIN] step {self.state.step} | tokens {self.state.tokens} | "
+                f"epoch {self.state.epoch} | loss {self.state.loss:.4f} | ppl {self.state.perplexity:.2f}"
             )
 
     def log_eval(self, eval_state: TrainerState):
+        # Only rank 0 logs to file / wandb
         if not dist.is_initialized() or dist.get_rank() == 0:
             if wandb.run is not None:
                 wandb.log(eval_state.to_log_dict(prefix="eval"), step=self.state.tokens)
 
-            # === Write eval outputs progressively to a text-based CSV ===
-            csv_path = "eval_generated_texts.csv"
-            os.makedirs(os.path.dirname(csv_path) or ".", exist_ok=True)
+            # === Progressive CSV writing inside outputs dir ===
+            csv_path = os.path.join(self.out_dir or ".", "eval_generated_texts.csv")
+            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
-            # Prepare row data
             generated_text = eval_state.extra.get("generated_text", "")
             truncated_text = " ".join(generated_text.split()[:100]).replace("\n", " ")
             row = f"{eval_state.step},{eval_state.loss:.4f},{eval_state.perplexity:.2f},\"{truncated_text}\"\n"
 
             # Write header if file is new
-            if not os.path.exists(csv_path):
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write("step,loss,perplexity,generated_text\n")
-
-            # Append new row
+            write_header = not os.path.exists(csv_path)
             with open(csv_path, "a", encoding="utf-8") as f:
+                if write_header:
+                    f.write("step,loss,perplexity,generated_text\n")
                 f.write(row)
 
-            print(
-                f"[EVAL] step {eval_state.step} | loss {eval_state.loss:.4f} | ppl {eval_state.perplexity:.2f} | generated_text: {generated_text}"
+            log.info(
+                f"[EVAL] step {eval_state.step} | loss {eval_state.loss:.4f} | "
+                f"ppl {eval_state.perplexity:.2f} | generated_text: {truncated_text}"
             )

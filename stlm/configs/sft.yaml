@@ -62,7 +62,8 @@ trainer:
 
 general:
   paths:
-    data_dir: "data"
+    data_dir: ${hydra:runtime.cwd}/data          # always points to your project root data/
+    outputs_dir: ${hydra:runtime.output_dir}     # dynamically resolves to this run’s output folder
   wandb:
     wandb_log: true
     project_name: supertinylanguagemodels

@@ -6,8 +6,7 @@ model:
     # type: "huggingface"
     # model_name: "Qwen/Qwen3-0.6B"
     type: "bytebpe"
-    vocab_size: 5000
-    save_path: "byte_bpe.json"
+    vocab_size: 5257
 
   embedder:
     # name: "huggingface"

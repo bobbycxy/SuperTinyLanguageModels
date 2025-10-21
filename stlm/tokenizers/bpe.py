@@ -70,6 +70,11 @@ class ByteBPETokenizer(BaseTokenizer):
         with tqdm(total=num_merges, desc="Training BPE", disable=not verbose) as pbar:
             while num_merges > 0:
                 stats = self._get_stats(ids)
+
+                if not stats:
+                    print("No more pairs to merge.")
+                    break
+
                 top_pairs = nlargest(min(max_clutch_size, num_merges), stats, key=stats.get)
 
                 pairs_to_merge = {}
@@ -85,6 +90,10 @@ class ByteBPETokenizer(BaseTokenizer):
                     current_vocab_size += 1
                     num_merges -= 1
                     pbar.update(1)
+
+                if not pairs_to_merge:
+                    print("No non-overlapping pairs to merge.")
+                    break
 
                 ids = self._multi_merge(ids, pairs_to_merge)
                 merges.update(pairs_to_merge)
@@ -126,7 +135,7 @@ class ByteBPETokenizer(BaseTokenizer):
         ds_cfg = cfg["trainer"]["dataset"]
         out_dir = get_file_path(cfg)
         os.makedirs(out_dir, exist_ok=True)
-        save_path = os.path.join(out_dir, tok_cfg.get("save_path", "byte_bpe.json"))
+        save_path = os.path.join(out_dir, f"{tok_cfg.get('vocab_size', 5000)}_byte_bpe.json")
 
         if os.path.exists(save_path):
             print(f"✅ Loading ByteBPE tokenizer from {save_path}")

@@ -40,7 +40,8 @@ class StandardEmbedder(BaseEmbedder):
         token_embs = self.token_embedding(token_ids) # [B, T, H]
         pos_ids = torch.arange(end=T, device=device).unsqueeze(0).expand(B, -1)
         pos_embs = self.pos_embedding(pos_ids) # [B, T, H]
-        embeddings = (token_embs + pos_embs) * (self.hidden_size ** 0.5)
+        embeddings = token_embs * (self.hidden_size ** 0.5)
+        embeddings = embeddings + pos_embs
         embeddings = self.dropout(embeddings)
 
         # Ensure gradient flow if checkpointing is enabled

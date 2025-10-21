@@ -15,7 +15,7 @@ from stlm.dataloader.dataloader import get_dataloaders, prepare_data
 import logging
 log = logging.getLogger(__name__)
 
-@hydra.main(config_path="stlm/configs", config_name="sft")
+@hydra.main(config_path="stlm/configs", config_name="generic")
 def main(cfg: DictConfig):
     # Hydra automatically creates and chdirs into outputs/<timestamp>/
     run_dir = os.getcwd()

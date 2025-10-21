@@ -119,6 +119,10 @@ class STLM(nn.Module):
         # Tokenizer
         tokenizer = build_tokenizer(cfg)
 
+        # set the tokenizer vocab size in model config
+        model_cfg["tokenizer"]["vocab_size"] = len(tokenizer.vocab)
+        print(f"[Tokenizer] Adjusted vocab_size to {len(tokenizer.vocab)} based on loaded tokenizer.")
+
         # Instantiate submodules
         embedder = embedder_cls(model_cfg=model_cfg, checkpointing=checkpointing, pad_token_id=tokenizer.pad_token_id)
         core = core_cls(model_cfg=model_cfg, checkpointing=checkpointing)
@@ -199,15 +203,11 @@ class BaseTrainer(ABC):
         self._train_iter = iter(self.train_dataloader)
 
     @abstractmethod
-    def compute_loss_and_metrics(self, batch) -> LossOutput:
+    def train_step(self, step: int):
         pass
 
     @abstractmethod
-    def log_train(self):
-        pass
-
-    @abstractmethod
-    def log_eval(self):
+    def eval_step(self, step: int, *args, **kwargs):
         pass
 
     def next_batch(self):
@@ -239,84 +239,6 @@ class BaseTrainer(ABC):
         dist.all_reduce(rt, op=dist.ReduceOp.SUM)
         rt /= dist.get_world_size()
         return rt
-
-
-    def train_step(self, step: int):
-        self.model.train()
-        step_loss, step_tokens = 0.0, 0
-
-        for _ in range(self.grad_accum_steps):
-            batch = self.next_batch()
-            out = self.compute_loss_and_metrics(batch)
-            self.backward(out.loss)
-            
-            step_loss += out.loss.item() * out.token_count
-            step_tokens += out.token_count
-            self.state.extra.update(out.metrics)
-
-        self.optimizer_step()
-
-        # average loss across GPUs
-        avg_loss = step_loss / step_tokens
-        avg_loss_tensor = torch.tensor(avg_loss, device=self.device)
-        avg_loss = self.distributed_mean(avg_loss_tensor).item()
-        avg_ppl = math.exp(avg_loss)
-
-        # update state
-        self.state.step = step
-        self.state.loss = avg_loss
-        self.state.perplexity = avg_ppl
-        self.state.tokens += step_tokens
-
-        # subclass handles logging
-        self.log_train()
-
-    def eval_step(self, step: int, prompt: str = None, max_new_tokens: int = 50):
-        """Run a single validation step (does not modify training state)."""
-        if self.val_dataloader is None:
-            return None
-
-        self.model.eval()
-        step_loss, step_tokens = 0.0, 0
-
-        with torch.no_grad():
-            for batch in self.val_dataloader:
-                out = self.compute_loss_and_metrics(batch)
-                step_loss += out.loss.item() * out.token_count
-                step_tokens += out.token_count
-
-            # ====== Average loss across GPUs (same convention as train_step) ======
-            avg_loss = step_loss / (step_tokens + 1e-8)
-            avg_loss_tensor = torch.tensor(avg_loss, device=self.device)
-            avg_loss = self.distributed_mean(avg_loss_tensor).item()
-            avg_ppl = math.exp(avg_loss)
-
-            # ====== Rank-0 optional text generation ======
-            generated_text = None
-            if not dist.is_initialized() or dist.get_rank() == 0:
-                if prompt is not None:
-                    generated_text = self.model.generate(
-                        prompt,
-                        max_new_tokens=max_new_tokens,
-                        eos_token_id=self.model.tokenizer.eos_token_id,
-                    )
-
-        eval_state = TrainerState(
-            step=step,
-            epoch=self.state.epoch,  # reference current epoch, but not modify it
-            tokens=step_tokens,       # independent of train token count
-            loss=avg_loss,
-            perplexity=avg_ppl,
-            extra={"generated_text": generated_text} if generated_text is not None else {},
-        )
-
-        self.log_eval(eval_state)
-
-        if dist.is_initialized():
-            dist.barrier()
-
-        return eval_state
-
     
     def log_train(self):
         if not dist.is_initialized() or dist.get_rank() == 0:

@@ -55,12 +55,14 @@ def main(cfg: DictConfig):
         lr=cfg.trainer.get("lr", 1e-3),
     )
 
+    lr_scheduler = stlm.build_lr_scheduler(optimizer, cfg)
+
     trainer = CausalTrainer(
         model,
         optimizer,
         train_dataloader=train_dataloader,
         val_dataloader=val_dataloader,
-        scheduler=None,
+        scheduler=lr_scheduler,
         device=device,
         grad_accum_steps=cfg.trainer.get("grad_accum_steps", 1),
         out_dir=cfg.general.get("outputs_dir"),

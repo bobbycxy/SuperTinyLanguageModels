@@ -82,7 +82,7 @@ class TokenizedDataset(Dataset):
         if split == "validation":
             self.indices = np.arange(0, self.max_start, self.context_window, dtype=np.int64)
         else:
-            self.indices = np.arange(self.max_start, dtype=np.int64)
+            self.indices = np.arange(0, self.max_start, self.cfg["model"]["embedder"]["stride"], dtype=np.int64)
 
     def __len__(self):
         return len(self.indices)

@@ -23,18 +23,21 @@ class TrainerState:
     tokens: int = 0
     loss: float = 0.0
     perplexity: float = 0.0
+    lr: float = 0.0
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def to_log_dict(self, prefix: str = "train") -> Dict[str, Any]:
-        log_dict = {
-            f"{prefix}/step": self.step,
-            f"{prefix}/epoch": self.epoch,
-            f"{prefix}/tokens": self.tokens,
-            f"{prefix}/loss": self.loss,
-            f"{prefix}/perplexity": self.perplexity,
+        prefix_fields = {
+            "train": ["step", "epoch", "tokens", "loss", "perplexity", "lr"],
+            "eval":  ["step", "loss", "perplexity"]
         }
-        for k, v in self.extra.items():
-            log_dict[f"{prefix}/{k}"] = v
+
+        if prefix not in prefix_fields:
+            raise ValueError(f"Unknown prefix '{prefix}' for logging.")
+
+        log_dict = {f"{prefix}/{field}": getattr(self, field) for field in prefix_fields[prefix]}
+
+        log_dict.update({f"{prefix}/{k}": v for k, v in self.extra.items()})
         return log_dict
 
 @dataclass
@@ -227,6 +230,10 @@ class BaseTrainer(ABC):
     def optimizer_step(self):
         self.scaler.step(self.optimizer)
         self.scaler.update()
+
+        current_lr = self.optimizer.param_groups[0]['lr']
+        self.state.lr = current_lr
+
         self.optimizer.zero_grad(set_to_none=True)
         if self.scheduler is not None:
             self.scheduler.step()
@@ -248,7 +255,7 @@ class BaseTrainer(ABC):
                     step=self.state.tokens
                 )
             log.info(
-                f"[TRAIN] step {self.state.step} | tokens {self.state.tokens} | "
+                f"[TRAIN] step {self.state.step} | lr {self.state.lr} | tokens {self.state.tokens} | "
                 f"epoch {self.state.epoch} | loss {self.state.loss:.4f} | ppl {self.state.perplexity:.2f}"
             )
 

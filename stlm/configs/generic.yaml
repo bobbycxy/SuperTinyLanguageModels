@@ -15,6 +15,7 @@ model:
     max_position_embeddings: 1024
     hidden_size: 512
     dropout: 0.1
+    stride: 1024
   core:
     # name: "huggingface"
     # model_name: "Qwen/Qwen3-0.6B"
@@ -22,7 +23,7 @@ model:
     num_layers: 12
     attention:
       name: "standard"
-      num_heads: 8
+      num_heads: 16
       dropout: 0.1
     ffn:
       name: "standard"
@@ -58,6 +59,12 @@ trainer:
     splits: ["train"]
     text_column: "text"
     val_split: 0.01
+  scheduler:
+    name: "cosineannealinglr"
+    warmup_ratio:   0.1
+    decay_ratio:    0.8
+    params:
+      eta_min: 1e-6
 
 general:
   load_checkpoint: None
